@@ -53,7 +53,6 @@ prompt-toolkit==3.0.43
 psutil==5.9.8
 ptyprocess==0.7.0
 pure-eval==0.2.2
-PyAudio==0.2.14
 pycparser==2.21
 pydantic==2.6.2
 pydantic_core==2.16.3
@@ -86,3 +85,5 @@ websockets==12.0
 yarl==1.9.4
 zope.event==5.0
 zope.interface==6.2
+
+PyAudio==0.2.14

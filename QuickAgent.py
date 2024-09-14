@@ -18,6 +18,9 @@ from langchain.prompts import (
 )
 from langchain.chains import LLMChain
 
+#pip3 install deepgram
+#source .venv/bin/activate   
+
 from deepgram import (
     DeepgramClient,
     DeepgramClientOptions,
@@ -30,7 +33,9 @@ load_dotenv()
 
 class LanguageModelProcessor:
     def __init__(self):
-        self.llm = ChatGroq(temperature=0, model_name="mixtral-8x7b-32768", groq_api_key=os.getenv("GROQ_API_KEY"))
+#        self.llm = ChatGroq(temperature=0, model_name="mixtral-8x7b-32768", groq_api_key=os.getenv("GROQ_API_KEY"))
+        self.llm = ChatGroq(temperature=0, model_name="mixtral-8x7b-32768", groq_api_key="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")
+
         # self.llm = ChatOpenAI(temperature=0, model_name="gpt-4-0125-preview", openai_api_key=os.getenv("OPENAI_API_KEY"))
         # self.llm = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo-0125", openai_api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -70,7 +75,8 @@ class LanguageModelProcessor:
 class TextToSpeech:
     # Set your Deepgram API Key and desired voice model
     DG_API_KEY = os.getenv("DEEPGRAM_API_KEY")
-    MODEL_NAME = "aura-helios-en"  # Example model name, change as needed
+#    MODEL_NAME = "nova-2-phonecall"#"aura-helios-en"  # Example model name, change as needed
+    MODEL_NAME = "nova-2"#"aura-helios-en"  # Example model name, change as needed
 
     @staticmethod
     def is_installed(lib_name: str) -> bool:
@@ -163,7 +169,8 @@ async def get_transcript(callback):
         options = LiveOptions(
             model="nova-2",
             punctuate=True,
-            language="en-US",
+            language="ru",  # Изменено с "en-US" на "ru-RU"
+        #    language="en-US",
             encoding="linear16",
             channels=1,
             sample_rate=16000,
