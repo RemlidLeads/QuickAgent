@@ -20,6 +20,8 @@ from langchain.chains import LLMChain
 
 #pip3 install deepgram
 #source .venv/bin/activate   
+#developers.deepgram.com
+
 
 from deepgram import (
     DeepgramClient,
@@ -73,10 +75,10 @@ class LanguageModelProcessor:
         return response['text']
 
 class TextToSpeech:
-    # Set your Deepgram API Key and desired voice model
-    DG_API_KEY = os.getenv("DEEPGRAM_API_KEY")
-#    MODEL_NAME = "nova-2-phonecall"#"aura-helios-en"  # Example model name, change as needed
-    MODEL_NAME = "nova-2"#"aura-helios-en"  # Example model name, change as needed
+    # Получение API ключа из переменных окружения
+    ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+    # Выбор голосовой модели. Список доступных голосов можно получить из API или на сайте ElevenLabs
+    VOICE_ID = "0zg4xdqsEMVWlfHS06Mg"  # Пример: замените на нужный вам ID голоса
 
     @staticmethod
     def is_installed(lib_name: str) -> bool:
@@ -84,42 +86,66 @@ class TextToSpeech:
         return lib is not None
 
     def speak(self, text):
+        print("ELEVEN LABS")
         if not self.is_installed("ffplay"):
-            raise ValueError("ffplay not found, necessary to stream audio.")
+            raise ValueError("ffplay не найден, необходим для воспроизведения аудио.")
 
-        DEEPGRAM_URL = f"https://api.deepgram.com/v1/speak?model={self.MODEL_NAME}&performance=some&encoding=linear16&sample_rate=24000"
+        # Эндпоинт API для синтеза речи
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{self.VOICE_ID}/stream"
+
         headers = {
-            "Authorization": f"Token {self.DG_API_KEY}",
-            "Content-Type": "application/json"
+            "Accept": "audio/mpeg",
+            "Content-Type": "application/json",
+            "xi-api-key": self.ELEVENLABS_API_KEY
         }
+
         payload = {
-            "text": text
+            "text": text,
+#            "model_id": "eleven_monolingual_v1"  # Убедитесь, что используете правильную модель
+#            "model_id": "eleven_turbo_v2"  # Убедитесь, что используете правильную модель
+            "model_id": "eleven_multilingual_v2",  # Убедитесь, что используете правильную модель
+            "voice_settings": {
+                "stability": 0.5,
+                "similarity_boost": 0.5,
+                "style": 0.5,
+                "use_speaker_boost": True
+            }
+
         }
 
-        player_command = ["ffplay", "-autoexit", "-", "-nodisp"]
-        player_process = subprocess.Popen(
-            player_command,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        try:
+            response = requests.post(url, headers=headers, json=payload, stream=True)
+            response.raise_for_status()  # Проверка на наличие HTTP ошибок
 
-        start_time = time.time()  # Record the time before sending the request
-        first_byte_time = None  # Initialize a variable to store the time when the first byte is received
+            # Команда для воспроизведения аудио с помощью ffplay
+            player_command = ["ffplay", "-autoexit", "-", "-nodisp"]
 
-        with requests.post(DEEPGRAM_URL, stream=True, headers=headers, json=payload) as r:
-            for chunk in r.iter_content(chunk_size=1024):
+            player_process = subprocess.Popen(
+                player_command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+            )
+
+            for chunk in response.iter_content(chunk_size=1024):
                 if chunk:
-                    if first_byte_time is None:  # Check if this is the first chunk received
-                        first_byte_time = time.time()  # Record the time when the first byte is received
-                        ttfb = int((first_byte_time - start_time)*1000)  # Calculate the time to first byte
-                        print(f"TTS Time to First Byte (TTFB): {ttfb}ms\n")
                     player_process.stdin.write(chunk)
                     player_process.stdin.flush()
 
-        if player_process.stdin:
-            player_process.stdin.close()
-        player_process.wait()
+            if player_process.stdin:
+                player_process.stdin.close()
+            player_process.wait()
+
+            # Проверка на ошибки ffplay
+            stderr = player_process.stderr.read().decode()
+            if stderr:
+                print(f"ffplay ошибки: {stderr}")
+
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP ошибка: {http_err} - {response.text}")
+        except Exception as e:
+            print(f"Произошла ошибка при синтезе речи: {e}")
+
 
 class TranscriptCollector:
     def __init__(self):
@@ -210,7 +236,7 @@ class ConversationManager:
             await get_transcript(handle_full_sentence)
             
             # Check for "goodbye" to exit the loop
-            if "goodbye" in self.transcription_response.lower():
+            if "пока" in self.transcription_response.lower():
                 break
             
             llm_response = self.llm.process(self.transcription_response)
